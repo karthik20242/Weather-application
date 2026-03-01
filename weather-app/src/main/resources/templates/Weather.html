@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Application</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script src="/_sdk/element_sdk.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* Temperature-based backgrounds */
+        .bg-freezing {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+        }
+
+        .bg-cold {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .bg-cool {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+
+        .bg-mild {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .bg-warm {
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+        }
+
+        .bg-hot {
+            background: linear-gradient(135deg, #ff0844 0%, #ffb199 100%);
+        }
+
+        .bg-default {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        }
+
+        /* Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(255,255,255,0.1); }
+            50% { box-shadow: 0 0 40px rgba(255,255,255,0.3); }
+        }
+
+        @keyframes slide-up {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes bounce-in {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .animate-pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+
+        .animate-slide-up {
+            animation: slide-up 0.6s ease-out forwards;
+        }
+
+        .animate-fade-in {
+            animation: fade-in 0.5s ease-out forwards;
+        }
+
+        .animate-spin-slow {
+            animation: spin-slow 20s linear infinite;
+        }
+
+        .animate-bounce-in {
+            animation: bounce-in 0.6s ease-out forwards;
+        }
+
+        .shimmer-bg {
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+
+        /* Glass effect */
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .glass-dark {
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Weather icons */
+        .weather-icon {
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+        }
+
+        /* Transition for background */
+        .bg-transition {
+            transition: background 1s ease-in-out;
+        }
+
+        /* Stagger animations */
+        .stagger-1 { animation-delay: 0.1s; }
+        .stagger-2 { animation-delay: 0.2s; }
+        .stagger-3 { animation-delay: 0.3s; }
+        .stagger-4 { animation-delay: 0.4s; }
+        .stagger-5 { animation-delay: 0.5s; }
+
+        /* Input styling */
+        .search-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.3);
+        }
+
+        /* Button hover effect */
+        .btn-search {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-search::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn-search:hover::after {
+            width: 300px;
+            height: 300px;
+        }
+
+        /* Loading spinner */
+        .loader {
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin-slow 1s linear infinite;
+        }
+    </style>
+    <style>body { box-sizing: border-box; }</style>
+    <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+</head>
+<body class="h-full">
+<div id="app-container" class="h-full w-full bg-default bg-transition overflow-auto"><!-- Decorative elements -->
+    <div class="absolute top-10 left-10 w-32 h-32 rounded-full bg-white/5 animate-float hidden md:block"></div>
+    <div class="absolute bottom-20 right-20 w-48 h-48 rounded-full bg-white/5 animate-float hidden md:block" style="animation-delay: 1s;"></div>
+    <div class="absolute top-1/3 right-10 w-24 h-24 rounded-full bg-white/5 animate-float hidden lg:block" style="animation-delay: 2s;"></div>
+    <div class="relative min-h-full w-full flex flex-col items-center justify-center px-4 py-8 md:py-12"><!-- Main Card -->
+        <div class="w-full max-w-md glass rounded-3xl p-6 md:p-8 animate-bounce-in"><!-- Header -->
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/20 mb-4 animate-pulse-glow">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path>
+                    </svg>
+                </div>
+                <h1 id="app-title" class="text-3xl md:text-4xl font-bold text-white mb-2">Weather App</h1>
+                <p class="text-white/60 text-sm">Discover weather conditions anywhere</p>
+            </div><!-- Search Form -->
+            <form id="weather-form" class="mb-6">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="flex-1 relative"><input type="text" id="city-input" name="city" required placeholder="Enter city name..." class="search-input w-full px-5 py-4 rounded-2xl bg-white/10 text-white placeholder-white/50 border border-white/20 transition-all duration-300 hover:bg-white/15">
+                        <svg class="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div><button type="submit" class="btn-search px-6 py-4 bg-white/20 hover:bg-white/30 text-white font-semibold rounded-2xl transition-all duration-300 border border-white/20"> <span class="relative z-10">Search</span> </button>
+                </div>
+            </form><!-- Loading State -->
+            <div id="loading-state" class="hidden text-center py-8">
+                <div class="loader mx-auto mb-4"></div>
+                <p class="text-white/70">Fetching weather data...</p>
+            </div><!-- Error State -->
+            <div id="error-state" class="hidden">
+                <div class="glass-dark rounded-2xl p-6 text-center">
+                    <svg class="w-12 h-12 text-red-400 mx-auto mb-3" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <p id="error-message" class="text-white/80">City not found. Please try again.</p>
+                </div>
+            </div><!-- Weather Display -->
+            <div id="weather-display" class="hidden"><!-- City Name -->
+                <div class="text-center mb-6 animate-slide-up opacity-0 stagger-1">
+                    <h2 id="city-name" class="text-2xl md:text-3xl font-bold text-white"></h2>
+                    <p id="country-name" class="text-white/60 text-sm mt-1"></p>
+                </div><!-- Weather Icon & Temp -->
+                <div class="flex flex-col items-center mb-8 animate-slide-up opacity-0 stagger-2">
+                    <div id="weather-icon" class="text-8xl md:text-9xl mb-4 weather-icon animate-float"></div>
+                    <div class="text-center"><span id="temperature" class="text-6xl md:text-7xl font-bold text-white"></span> <span class="text-3xl text-white/70">°C</span>
+                    </div>
+                    <p id="description" class="text-xl text-white/80 mt-2 capitalize"></p>
+                </div><!-- Weather Details Grid -->
+                <div class="grid grid-cols-2 gap-4"><!-- Feels Like -->
+                    <div class="glass-dark rounded-2xl p-4 text-center animate-slide-up opacity-0 stagger-3">
+                        <svg class="w-6 h-6 text-white/60 mx-auto mb-2" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        <p class="text-white/50 text-xs mb-1">Feels Like</p>
+                        <p id="feels-like" class="text-xl font-semibold text-white"></p>
+                    </div><!-- Humidity -->
+                    <div class="glass-dark rounded-2xl p-4 text-center animate-slide-up opacity-0 stagger-3">
+                        <svg class="w-6 h-6 text-white/60 mx-auto mb-2" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                        </svg>
+                        <p class="text-white/50 text-xs mb-1">Humidity</p>
+                        <p id="humidity" class="text-xl font-semibold text-white"></p>
+                    </div><!-- Wind -->
+                    <div class="glass-dark rounded-2xl p-4 text-center animate-slide-up opacity-0 stagger-4">
+                        <svg class="w-6 h-6 text-white/60 mx-auto mb-2" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                        </svg>
+                        <p class="text-white/50 text-xs mb-1">Wind Speed</p>
+                        <p id="wind" class="text-xl font-semibold text-white"></p>
+                    </div><!-- Pressure -->
+                    <div class="glass-dark rounded-2xl p-4 text-center animate-slide-up opacity-0 stagger-4">
+                        <svg class="w-6 h-6 text-white/60 mx-auto mb-2" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        <p class="text-white/50 text-xs mb-1">Pressure</p>
+                        <p id="pressure" class="text-xl font-semibold text-white"></p>
+                    </div>
+                </div><!-- Min/Max Temp -->
+                <div class="mt-4 glass-dark rounded-2xl p-4 animate-slide-up opacity-0 stagger-5">
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                            </svg><span class="text-white/60 text-sm">Min</span> <span id="temp-min" class="text-white font-semibold"></span>
+                        </div>
+                        <div class="w-px h-6 bg-white/20"></div>
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+                            </svg><span class="text-white/60 text-sm">Max</span> <span id="temp-max" class="text-white font-semibold"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div><!-- Footer -->
+        <p class="mt-6 text-white/40 text-sm animate-fade-in" style="animation-delay: 0.8s;">Powered by OpenWeatherMap API</p>
+    </div>
+</div>
+<script>
+    // Default configuration
+    const defaultConfig = {
+        app_title: 'Weather App',
+        search_placeholder: 'Enter city name...',
+        primary_color: '#667eea',
+        text_color: '#ffffff',
+        accent_color: '#fee140'
+    };
+
+    // Current config reference
+    let config = { ...defaultConfig };
+
+    // Weather emoji mapping
+    function getWeatherEmoji(weatherCode, isDay = true) {
+        const weatherEmojis = {
+            // Thunderstorm
+            '2': '⛈️',
+            // Drizzle
+            '3': '🌧️',
+            // Rain
+            '5': '🌧️',
+            // Snow
+            '6': '❄️',
+            // Atmosphere (fog, mist, etc.)
+            '7': '🌫️',
+            // Clear
+            '800': isDay ? '☀️' : '🌙',
+            // Clouds
+            '801': isDay ? '🌤️' : '☁️',
+            '802': '⛅',
+            '803': '🌥️',
+            '804': '☁️'
+        };
+
+        const codeStr = String(weatherCode);
+
+        // Check exact match first
+        if (weatherEmojis[codeStr]) return weatherEmojis[codeStr];
+
+        // Check category (first digit)
+        const category = codeStr[0];
+        return weatherEmojis[category] || '🌡️';
+    }
+
+    // Get background class based on temperature
+    function getTemperatureBackground(temp) {
+        if (temp <= -10) return 'bg-freezing';
+        if (temp <= 5) return 'bg-cold';
+        if (temp <= 15) return 'bg-cool';
+        if (temp <= 22) return 'bg-mild';
+        if (temp <= 30) return 'bg-warm';
+        return 'bg-hot';
+    }
+
+    // Update background based on temperature
+    function updateBackground(temp) {
+        const container = document.getElementById('app-container');
+        const backgrounds = ['bg-freezing', 'bg-cold', 'bg-cool', 'bg-mild', 'bg-warm', 'bg-hot', 'bg-default'];
+        backgrounds.forEach(bg => container.classList.remove(bg));
+        container.classList.add(getTemperatureBackground(temp));
+    }
+
+    // Reset background to default
+    function resetBackground() {
+        const container = document.getElementById('app-container');
+        const backgrounds = ['bg-freezing', 'bg-cold', 'bg-cool', 'bg-mild', 'bg-warm', 'bg-hot'];
+        backgrounds.forEach(bg => container.classList.remove(bg));
+        container.classList.add('bg-default');
+    }
+
+    // Show/hide states
+    function showLoading() {
+        document.getElementById('loading-state').classList.remove('hidden');
+        document.getElementById('weather-display').classList.add('hidden');
+        document.getElementById('error-state').classList.add('hidden');
+    }
+
+    function showError(message) {
+        document.getElementById('loading-state').classList.add('hidden');
+        document.getElementById('weather-display').classList.add('hidden');
+        document.getElementById('error-state').classList.remove('hidden');
+        document.getElementById('error-message').textContent = message;
+        resetBackground();
+    }
+
+    function showWeather() {
+        document.getElementById('loading-state').classList.add('hidden');
+        document.getElementById('error-state').classList.add('hidden');
+        document.getElementById('weather-display').classList.remove('hidden');
+
+        // Re-trigger animations
+        const animatedElements = document.querySelectorAll('.animate-slide-up');
+        animatedElements.forEach(el => {
+            el.style.animation = 'none';
+            el.offsetHeight; // Trigger reflow
+            el.style.animation = null;
+        });
+    }
+
+    // Fetch weather data
+    async function fetchWeather(city) {
+        showLoading();
+
+        // Using OpenWeatherMap API - Replace YOUR_API_KEY with actual key
+        const apiKey = 'YOUR_API_KEY'; // Demo mode - see note below
+
+        // For demo purposes, we'll simulate weather data
+        // In production, you would use:
+        // const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${apiKey}&units=metric`;
+
+        // Simulate API call delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Demo weather data based on city name hash for variety
+        const hash = city.toLowerCase().split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+        const tempBase = (hash % 40) - 5; // Range: -5 to 35
+        const weatherCodes = [800, 801, 802, 803, 804, 500, 501, 600, 200, 701];
+        const weatherCode = weatherCodes[hash % weatherCodes.length];
+
+        const demoData = {
+            name: city.charAt(0).toUpperCase() + city.slice(1),
+            sys: { country: ['US', 'GB', 'DE', 'FR', 'JP', 'AU', 'CA', 'IN'][hash % 8] },
+            main: {
+                temp: tempBase + (Math.random() * 5),
+                feels_like: tempBase + (Math.random() * 3) - 1,
+                humidity: 40 + (hash % 50),
+                pressure: 1000 + (hash % 30),
+                temp_min: tempBase - 3,
+                temp_max: tempBase + 5
+            },
+            weather: [{
+                id: weatherCode,
+                description: getWeatherDescription(weatherCode)
+            }],
+            wind: { speed: (hash % 20) + 2 }
+        };
+
+        displayWeather(demoData);
+    }
+
+    function getWeatherDescription(code) {
+        const descriptions = {
+            800: 'clear sky',
+            801: 'few clouds',
+            802: 'scattered clouds',
+            803: 'broken clouds',
+            804: 'overcast clouds',
+            500: 'light rain',
+            501: 'moderate rain',
+            600: 'light snow',
+            200: 'thunderstorm',
+            701: 'mist'
+        };
+        return descriptions[code] || 'weather';
+    }
+
+    // Display weather data
+    function displayWeather(data) {
+        const temp = Math.round(data.main.temp);
+        const isDay = true; // Simplified - in production check sunrise/sunset
+
+        document.getElementById('city-name').textContent = data.name;
+        document.getElementById('country-name').textContent = data.sys.country;
+        document.getElementById('temperature').textContent = temp;
+        document.getElementById('description').textContent = data.weather[0].description;
+        document.getElementById('weather-icon').textContent = getWeatherEmoji(data.weather[0].id, isDay);
+        document.getElementById('feels-like').textContent = `${Math.round(data.main.feels_like)}°C`;
+        document.getElementById('humidity').textContent = `${data.main.humidity}%`;
+        document.getElementById('wind').textContent = `${Math.round(data.wind.speed)} m/s`;
+        document.getElementById('pressure').textContent = `${data.main.pressure} hPa`;
+        document.getElementById('temp-min').textContent = `${Math.round(data.main.temp_min)}°C`;
+        document.getElementById('temp-max').textContent = `${Math.round(data.main.temp_max)}°C`;
+
+        updateBackground(temp);
+        showWeather();
+    }
+
+    // Form submission
+    document.getElementById('weather-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const city = document.getElementById('city-input').value.trim();
+        if (city) {
+            fetchWeather(city);
+        }
+    });
+
+    // Element SDK initialization
+    if (window.elementSdk) {
+        window.elementSdk.init({
+            defaultConfig,
+            onConfigChange: async (newConfig) => {
+                config = { ...defaultConfig, ...newConfig };
+
+                // Update app title
+                const titleEl = document.getElementById('app-title');
+                if (titleEl) {
+                    titleEl.textContent = config.app_title || defaultConfig.app_title;
+                }
+
+                // Update search placeholder
+                const inputEl = document.getElementById('city-input');
+                if (inputEl) {
+                    inputEl.placeholder = config.search_placeholder || defaultConfig.search_placeholder;
+                }
+            },
+            mapToCapabilities: (config) => ({
+                recolorables: [],
+                borderables: [],
+                fontEditable: undefined,
+                fontSizeable: undefined
+            }),
+            mapToEditPanelValues: (config) => new Map([
+                ['app_title', config.app_title || defaultConfig.app_title],
+                ['search_placeholder', config.search_placeholder || defaultConfig.search_placeholder]
+            ])
+        });
+    }
+</script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9d578ccee6847edf',t:'MTc3MjM2MTY5NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
